@@ -1,0 +1,136 @@
+:root {
+  --bg: #f2efe8;
+  --panel: #fffaf1;
+  --text: #1f2430;
+  --muted: #5a6170;
+  --brand: #0f5c4d;
+  --accent: #d98f2b;
+  --error: #b42318;
+  --ok: #116329;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+  background: radial-gradient(circle at 10% 10%, #fff7e8 0, #f2efe8 40%, #e9e3d7 100%);
+}
+
+.app-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.hero {
+  border-left: 8px solid var(--accent);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(90deg, #fff6dd, #f3f0e7);
+  animation: rise 0.5s ease-out;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 2rem);
+}
+
+.hero p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid #ddd5c4;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 20px rgba(41, 43, 46, 0.06);
+  animation: rise 0.35s ease-out;
+}
+
+.grid {
+  display: grid;
+  gap: 8px;
+}
+
+.two-col {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+input,
+textarea,
+select,
+button {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #c8c1b1;
+  font-size: 14px;
+}
+
+button {
+  cursor: pointer;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  opacity: 0.94;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th,
+td {
+  border-bottom: 1px solid #e0d8c9;
+  text-align: left;
+  padding: 8px;
+}
+
+.error {
+  color: var(--error);
+}
+
+.ok {
+  color: var(--ok);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .app-shell {
+    padding: 12px;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+}

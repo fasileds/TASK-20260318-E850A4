@@ -1,0 +1,29 @@
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs & Temp
+logs/
+*.log
+.tmp/
+trajectory.json
+
+# Backend (Python)
+backend/__pycache__/
+backend/.venv/
+backend/.pytest_cache/
+backend/.env
+backend/.tmp/
+backend/storage/
+backend/backups/
+backend/*.db
+
+# Frontend (Node/React)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.eslintcache
+
+# Docker
+.docker/
