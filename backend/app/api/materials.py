@@ -48,7 +48,7 @@ async def upload_material_version(
     label: str = Form("Submitted"),
     correction_reason: str | None = Form(default=None),
     db: Session = db_dep(),
-    _: User = Depends(require_roles(Role.applicant)),
+    current_user: User = Depends(require_roles(Role.applicant)),
 ):
     checklist = db.query(MaterialChecklistItem).filter(MaterialChecklistItem.id == checklist_item_id).first()
     if not checklist:
@@ -59,6 +59,11 @@ async def upload_material_version(
     registration = db.query(RegistrationForm).filter(RegistrationForm.id == checklist.registration_id).first()
     if not registration:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
+    
+    # Ownership Check (IDOR FIX)
+    if registration.applicant_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this registration")
+
     if ensure_utc(now_utc()) > ensure_utc(registration.deadline_at):
         raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Material locked after deadline")
 

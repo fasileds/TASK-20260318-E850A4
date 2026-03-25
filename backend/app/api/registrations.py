@@ -55,8 +55,17 @@ def registration_detail(
     if not registration:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
 
+    # Ownership / Permission Check (IDOR FIX)
+    is_owner = user.id == registration.applicant_id
+    is_privileged = user.role in {Role.system_admin, Role.reviewer, Role.financial_admin}
+    
+    if not is_owner and not is_privileged:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+
     data = dict(registration.form_data or {})
-    if user.role != Role.system_admin and user.id != registration.applicant_id:
+    # Masking for non-admins (even if it's the owner's own data? No, owner should probably see it).
+    # Prompt says: "displayed with role-based masking". Usually means analysts see it masked.
+    if user.role != Role.system_admin and not is_owner:
         if "id_number" in data and isinstance(data["id_number"], str):
             data["id_number"] = "********"
         if "contact_phone" in data and isinstance(data["contact_phone"], str):

@@ -101,13 +101,12 @@ def test_idor_prevention_user_cannot_access_other_registration(client, db_sessio
     reg_id_a = _create_registration(client, applicant_headers)
 
     # Create user B (another applicant)
-    from app.core.security import get_password_hash
+    from app.core.security import hash_password
     from app.models.enums import Role
     user_b = User(
         username="applicant_b",
-        password_hash=get_password_hash("ApplicantB@123"),
+        password_hash=hash_password("ApplicantB@123"),
         role=Role.applicant,
-        created_at=now_utc()
     )
     db_session.add(user_b)
     db_session.commit()
@@ -115,15 +114,13 @@ def test_idor_prevention_user_cannot_access_other_registration(client, db_sessio
     # Login as user B
     login_res = client.post("/auth/login", json={"username": "applicant_b", "password": "ApplicantB@123"})
     assert login_res.status_code == 200
-    token = login_res.json()["username"] # The mock auth/deps use username as token for simplicity in some setups, but here it looks like it returns UserOut
-    # Assuming standard headers for user B
-    headers_b = {"Authorization": f"Bearer {user_b.username}"} # Assuming the mock handles this
+    token = login_res.json()["token"]
+    # Using Authorization header with token
+    headers_b = {"Authorization": f"Bearer {token}"}
 
-    # Try to access user A's registration
+    # Try to access user A's registration (should be 403)
     res = client.get(f"/registrations/{reg_id_a}/detail", headers=headers_b)
-    # The current implementation in registrations.py:59 only masks fields if NOT owner, but doesn't block 403 for detail?
-    # Actually, registrations.py:59 masks if user.id != registration.applicant_id.
-    # What about update? registrations.py:84 explicitly blocks 403 for update.
+    assert res.status_code == 403
     
     # Check update access (IDOR on write)
     res_update = client.patch(f"/registrations/{reg_id_a}", json={"title": "Hacked"}, headers=headers_b)

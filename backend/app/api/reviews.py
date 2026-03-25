@@ -84,7 +84,11 @@ def batch_review(
 
 
 @router.get("/{registration_id}/logs")
-def review_logs(registration_id: int, db: Session = db_dep()):
+def review_logs(
+    registration_id: int,
+    db: Session = db_dep(),
+    _: User = Depends(require_roles(Role.reviewer, Role.system_admin)),
+):
     records = (
         db.query(ReviewWorkflowRecord)
         .filter(ReviewWorkflowRecord.registration_id == registration_id)

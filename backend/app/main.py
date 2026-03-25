@@ -16,10 +16,49 @@ from app.core.database import Base, engine
 from app.core.security import now_utc
 from app.models.entities import AccessAuditLog
 from app.core.database import SessionLocal
-from app.services.scheduler import quality_metrics_scheduler
-
-app = FastAPI(title="Activity Registration and Funding Audit Management Platform")
+from app.services.scheduler import daily_backup_scheduler, quality_metrics_scheduler
 quality_scheduler_task: asyncio.Task | None = None
+backup_scheduler_task: asyncio.Task | None = None
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    global quality_scheduler_task, backup_scheduler_task
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_users(db)
+    finally:
+        db.close()
+    if settings.enable_quality_scheduler and (quality_scheduler_task is None or quality_scheduler_task.done()):
+        quality_scheduler_task = asyncio.create_task(quality_metrics_scheduler())
+    
+    if backup_scheduler_task is None or backup_scheduler_task.done():
+        backup_scheduler_task = asyncio.create_task(daily_backup_scheduler())
+    
+    yield
+    
+    # Shutdown logic
+    if quality_scheduler_task is not None:
+        quality_scheduler_task.cancel()
+        try:
+            await quality_scheduler_task
+        except asyncio.CancelledError:
+            pass
+        quality_scheduler_task = None
+    
+    if backup_scheduler_task is not None:
+        backup_scheduler_task.cancel()
+        try:
+            await backup_scheduler_task
+        except asyncio.CancelledError:
+            pass
+        backup_scheduler_task = None
+
+
+app = FastAPI(title="Activity Registration and Funding Audit Management Platform", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,31 +73,6 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    global quality_scheduler_task
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        seed_users(db)
-    finally:
-        db.close()
-    if settings.enable_quality_scheduler and (quality_scheduler_task is None or quality_scheduler_task.done()):
-        quality_scheduler_task = asyncio.create_task(quality_metrics_scheduler())
-
-
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    global quality_scheduler_task
-    if quality_scheduler_task is not None:
-        quality_scheduler_task.cancel()
-        try:
-            await quality_scheduler_task
-        except asyncio.CancelledError:
-            pass
-        quality_scheduler_task = None
-
-
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -67,7 +81,16 @@ def health() -> dict[str, str]:
 @app.middleware("http")
 async def audit_log_middleware(request: Request, call_next):
     response = await call_next(request)
-    username = request.headers.get("X-Username")
+    auth_header = request.headers.get("Authorization")
+    username = None
+    if auth_header and auth_header.startswith("Bearer "):
+        from app.core.crypto import decrypt_config_value
+        try:
+            token = auth_header.split(" ")[1]
+            username = decrypt_config_value(token)
+        except Exception:
+            pass
+
     db = SessionLocal()
     try:
         db.add(

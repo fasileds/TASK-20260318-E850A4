@@ -45,6 +45,37 @@ def create_transaction(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Funding account not found")
 
     tx_type = TransactionType(payload.transaction_type)
+    
+    # Calculate pre-transaction totals for warning
+    expense_total = (
+        db.query(func.coalesce(func.sum(FundingTransaction.amount), 0.0))
+        .filter(FundingTransaction.account_id == payload.account_id)
+        .filter(FundingTransaction.transaction_type == TransactionType.expense)
+        .scalar()
+    )
+    
+    new_expense_total = float(expense_total)
+    if tx_type == TransactionType.expense:
+        new_expense_total += float(payload.amount)
+
+    warning = False
+    if new_expense_total > float(account.budget_amount) * settings.overspending_ratio_threshold:
+        warning = True
+
+    if warning and not payload.confirmed_overspending:
+        # Return the warning without committing
+        return {
+            "id": 0,
+            "account_id": payload.account_id,
+            "transaction_type": tx_type.value,
+            "category": payload.category,
+            "amount": float(payload.amount),
+            "note": payload.note,
+            "invoice_path": payload.invoice_path,
+            "overspending_warning": True,
+            "created_at": now_utc(),
+        }
+
     transaction = FundingTransaction(
         account_id=payload.account_id,
         transaction_type=tx_type,
@@ -55,41 +86,20 @@ def create_transaction(
         created_at=now_utc(),
     )
     db.add(transaction)
-    db.flush()
-
-    income_total = (
-        db.query(func.coalesce(func.sum(FundingTransaction.amount), 0))
-        .filter(FundingTransaction.account_id == payload.account_id)
-        .filter(FundingTransaction.transaction_type == TransactionType.income)
-        .scalar()
-    )
-    expense_total = (
-        db.query(func.coalesce(func.sum(FundingTransaction.amount), 0))
-        .filter(FundingTransaction.account_id == payload.account_id)
-        .filter(FundingTransaction.transaction_type == TransactionType.expense)
-        .scalar()
-    )
-
-    warning = False
-    if float(expense_total) > float(account.budget_amount) * settings.overspending_ratio_threshold:
-        warning = True
-
     db.commit()
     db.refresh(transaction)
-    result = FundingTransactionOut.model_validate(
-        {
-            "id": transaction.id,
-            "account_id": transaction.account_id,
-            "transaction_type": transaction.transaction_type.value,
-            "category": transaction.category,
-            "amount": float(transaction.amount),
-            "note": transaction.note,
-            "invoice_path": transaction.invoice_path,
-            "overspending_warning": warning,
-            "created_at": transaction.created_at,
-        }
-    )
-    return result
+    
+    return {
+        "id": transaction.id,
+        "account_id": transaction.account_id,
+        "transaction_type": transaction.transaction_type.value,
+        "category": transaction.category,
+        "amount": float(transaction.amount),
+        "note": transaction.note,
+        "invoice_path": transaction.invoice_path,
+        "overspending_warning": warning,
+        "created_at": transaction.created_at,
+    }
 
 
 @router.post("/invoices/upload")

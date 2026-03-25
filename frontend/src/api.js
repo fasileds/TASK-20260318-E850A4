@@ -5,6 +5,14 @@ export const api = axios.create({
   timeout: 15000,
 });
 
+export function setAuthToken(token) {
+  if (token) {
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common["Authorization"];
+  }
+}
+
 export function setUsernameHeader(username) {
   if (username) {
     api.defaults.headers.common["X-Username"] = username;

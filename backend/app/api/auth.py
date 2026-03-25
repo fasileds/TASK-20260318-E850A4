@@ -5,14 +5,15 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import db_dep
 from app.core.config import settings
+from app.core.crypto import encrypt_config_value
 from app.core.security import ensure_utc, now_utc, verify_password
 from app.models.entities import User
-from app.schemas.auth import LoginRequest, UserOut
+from app.schemas.auth import LoginOut, LoginRequest, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=UserOut)
+@router.post("/login", response_model=LoginOut)
 def login(payload: LoginRequest, db: Session = db_dep()):
     user = db.query(User).filter(User.username == payload.username).first()
     if not user:
@@ -27,7 +28,8 @@ def login(payload: LoginRequest, db: Session = db_dep()):
         user.first_failed_at = None
         user.locked_until = None
         db.commit()
-        return user
+        token = encrypt_config_value(user.username)
+        return {"user": user, "token": token}
 
     window = timedelta(minutes=settings.login_window_minutes)
     first_failed_at = ensure_utc(user.first_failed_at) if user.first_failed_at else None

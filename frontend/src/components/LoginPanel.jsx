@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, setUsernameHeader } from "../api";
+import { api, setAuthToken, setUsernameHeader } from "../api";
 
 export function LoginPanel({ onLoggedIn }) {
   const [username, setUsername] = useState("");
@@ -11,8 +11,9 @@ export function LoginPanel({ onLoggedIn }) {
     setError("");
     try {
       const { data } = await api.post("/auth/login", { username, password });
-      setUsernameHeader(data.username);
-      onLoggedIn(data);
+      setAuthToken(data.token);
+      setUsernameHeader(data.user.username);
+      onLoggedIn(data.user);
     } catch (err) {
       setError(err.response?.data?.detail || "Login failed");
     }

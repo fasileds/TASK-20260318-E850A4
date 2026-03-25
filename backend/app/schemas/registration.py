@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RegistrationCreate(BaseModel):
@@ -22,5 +22,4 @@ class RegistrationOut(BaseModel):
     deadline_at: datetime
     supplemented_once: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

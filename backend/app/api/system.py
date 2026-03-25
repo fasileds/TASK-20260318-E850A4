@@ -15,7 +15,9 @@ from app.models.entities import AccessAuditLog, QualityValidationResult, User
 from app.models.enums import Role
 from app.models.system import SensitiveConfig
 from app.schemas.quality import QualityMetricOut
+from app.services.backup import run_db_backup
 from app.services.quality import generate_quality_metrics
+
 
 router = APIRouter(prefix="/system", tags=["system"])
 
@@ -53,23 +55,12 @@ def local_alerts(
 
 
 @router.post("/backup")
-def create_local_backup(db: Session = db_dep(), _: User = Depends(require_roles(Role.system_admin))):
-    now = now_utc().strftime("%Y%m%d_%H%M%S")
-    backup_file = Path(settings.backup_root) / f"backup_{now}.sql"
-    
-    # Simple pg_dump command based on DATABASE_URL
-    # Format: postgresql+psycopg2://user:pass@host:port/dbname
-    conn_str = settings.database_url.replace("postgresql+psycopg2://", "postgresql://")
+def create_local_backup(_: User = Depends(require_roles(Role.system_admin))):
     try:
-        subprocess.run(
-            ["pg_dump", "--dbname", conn_str, "-f", str(backup_file)],
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        return {"backup_file": str(backup_file), "status": "completed"}
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Backup failed: {e.stderr}")
+        backup_file = run_db_backup()
+        return {"backup_file": backup_file, "status": "completed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
 
 
 @router.post("/restore")
@@ -93,6 +84,7 @@ def export_reconciliation_report(db: Session = db_dep(), _: User = Depends(requi
     
     return {
         "report_type": "reconciliation",
+        "status": "ready",
         "format": "csv",
         "content_base64": io.StringIO(output.getvalue()).getvalue()
     }
@@ -111,6 +103,7 @@ def export_audit_report(db: Session = db_dep(), _: User = Depends(require_roles(
         
     return {
         "report_type": "audit",
+        "status": "ready",
         "format": "csv",
         "content_base64": io.StringIO(output.getvalue()).getvalue()
     }
@@ -137,6 +130,7 @@ def export_compliance_report(db: Session = db_dep(), _: User = Depends(require_r
         
     return {
         "report_type": "compliance",
+        "status": "ready",
         "format": "csv",
         "content_base64": io.StringIO(output.getvalue()).getvalue()
     }

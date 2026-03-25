@@ -29,16 +29,19 @@ export function FinancePanel() {
   }
 
   async function submitTransaction() {
-    const { data } = await api.post("/funding/transactions", {
+    const payload = {
       account_id: Number(accountId),
       transaction_type: txType,
       category,
       amount: Number(amount),
       note,
       invoice_path: uploadedInvoicePath || null,
-    });
+      confirmed_overspending: false,
+    };
 
-    if (data.overspending_warning) {
+    let { data } = await api.post("/funding/transactions", payload);
+
+    if (data.overspending_warning && data.id === 0) {
       const confirmed = window.confirm(
         "Warning: Expenses exceed 110% of budget. Do you want to confirm this submission?"
       );
@@ -46,6 +49,9 @@ export function FinancePanel() {
         setMessage("Secondary confirmation declined by operator.");
         return;
       }
+      // Resubmit with confirmation
+      const res = await api.post("/funding/transactions", { ...payload, confirmed_overspending: true });
+      data = res.data;
     }
     setMessage("Transaction recorded.");
   }

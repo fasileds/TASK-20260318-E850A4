@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FundingAccountCreate(BaseModel):
@@ -15,6 +15,7 @@ class FundingTransactionCreate(BaseModel):
     amount: float = Field(gt=0)
     note: str | None = Field(default=None, max_length=2000)
     invoice_path: str | None = None
+    confirmed_overspending: bool = False
 
 
 class FundingTransactionOut(BaseModel):
@@ -28,5 +29,4 @@ class FundingTransactionOut(BaseModel):
     overspending_warning: bool = False
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class QualityMetricOut(BaseModel):
@@ -7,5 +7,4 @@ class QualityMetricOut(BaseModel):
     threshold: float | None
     exceeded: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
