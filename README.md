@@ -18,7 +18,7 @@ Once the containers are successfully running, you can access the platform at the
 
 | Service | Access URL |
 | :--- | :--- |
-| **Frontend UI (React)** | [http://localhost:3000](http://localhost:3000) |
+| **Frontend UI (Vue.js)** | [http://localhost:3000](http://localhost:3000) |
 | **Backend API (FastAPI Docs)** | [http://localhost:8000/docs](http://localhost:8000/docs) |
 | **PostgreSQL Database** | `localhost:5432` (Accessed via Docker network) |
 

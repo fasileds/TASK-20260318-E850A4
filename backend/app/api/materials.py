@@ -27,8 +27,16 @@ def add_checklist_item(
     registration_id: int,
     payload: MaterialChecklistCreate,
     db: Session = db_dep(),
-    _: User = Depends(require_roles(Role.system_admin, Role.applicant)),
+    user: User = Depends(require_roles(Role.system_admin, Role.applicant)),
 ):
+    # Ownership Check (IDOR FIX)
+    if user.role == Role.applicant:
+        registration = db.query(RegistrationForm).filter(RegistrationForm.id == registration_id).first()
+        if not registration:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
+        if registration.applicant_id != user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+
     item = MaterialChecklistItem(
         registration_id=registration_id,
         item_key=payload.item_key,

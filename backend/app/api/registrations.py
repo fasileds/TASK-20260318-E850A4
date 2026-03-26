@@ -40,9 +40,12 @@ def create_registration(
 @router.get("", response_model=list[RegistrationOut])
 def list_registrations(
     db: Session = db_dep(),
-    _: User = Depends(require_roles(Role.applicant, Role.reviewer, Role.financial_admin, Role.system_admin)),
+    user: User = Depends(require_roles(Role.applicant, Role.reviewer, Role.financial_admin, Role.system_admin)),
 ):
-    return db.query(RegistrationForm).order_by(RegistrationForm.id.desc()).all()
+    query = db.query(RegistrationForm)
+    if user.role == Role.applicant:
+        query = query.filter(RegistrationForm.applicant_id == user.id)
+    return query.order_by(RegistrationForm.id.desc()).all()
 
 
 @router.get("/{registration_id}/detail")

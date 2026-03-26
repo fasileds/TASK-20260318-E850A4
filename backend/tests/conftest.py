@@ -25,9 +25,10 @@ os.environ["BACKUP_ROOT"] = BACKUPS_PATH.as_posix()
 os.environ["ENABLE_QUALITY_SCHEDULER"] = "false"
 
 from app.bootstrap import seed_users  # noqa: E402
-from app.core.crypto import encrypt_config_value
+from app.core.security import create_access_token  # noqa: E402
 from app.core.database import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models.enums import Role # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -71,29 +72,28 @@ def db_session():
         db.close()
 
 
-def _get_headers(username):
-    token = encrypt_config_value(username)
+def _get_headers(username, role: Role):
+    token = create_access_token(username, role.value)
     return {
-        "Authorization": f"Bearer {token}",
-        "X-Username": username  # Keep for legacy/support
+        "Authorization": f"Bearer {token}"
     }
 
 
 @pytest.fixture
 def applicant_headers():
-    return _get_headers("applicant_demo")
+    return _get_headers("applicant_demo", Role.applicant)
 
 
 @pytest.fixture
 def reviewer_headers():
-    return _get_headers("reviewer_demo")
+    return _get_headers("reviewer_demo", Role.reviewer)
 
 
 @pytest.fixture
 def finance_headers():
-    return _get_headers("finance_demo")
+    return _get_headers("finance_demo", Role.financial_admin)
 
 
 @pytest.fixture
 def admin_headers():
-    return _get_headers("admin_demo")
+    return _get_headers("admin_demo", Role.system_admin)

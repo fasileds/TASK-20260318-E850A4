@@ -1,12 +1,12 @@
 from datetime import timedelta
 
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_dep
 from app.core.config import settings
-from app.core.crypto import encrypt_config_value
-from app.core.security import ensure_utc, now_utc, verify_password
+from app.core.security import create_access_token, ensure_utc, now_utc, verify_password
 from app.models.entities import User
 from app.schemas.auth import LoginOut, LoginRequest, UserOut
 
@@ -28,7 +28,10 @@ def login(payload: LoginRequest, db: Session = db_dep()):
         user.first_failed_at = None
         user.locked_until = None
         db.commit()
-        token = encrypt_config_value(user.username)
+        token = create_access_token(
+            username=user.username,
+            role=user.role.value if hasattr(user.role, "value") else str(user.role)
+        )
         return {"user": user, "token": token}
 
     window = timedelta(minutes=settings.login_window_minutes)

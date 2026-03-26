@@ -1,6 +1,8 @@
+import jwt
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
+from app.core.config import settings
 
 
 def hash_password(password: str) -> str:
@@ -27,3 +29,12 @@ def ensure_utc(dt: datetime) -> datetime:
 
 def lock_until(minutes: int) -> datetime:
     return now_utc() + timedelta(minutes=minutes)
+
+
+def create_access_token(username: str, role: str) -> str:
+    exp = now_utc() + timedelta(minutes=settings.jwt_expire_minutes)
+    return jwt.encode(
+        {"sub": username, "role": role, "exp": exp},
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )

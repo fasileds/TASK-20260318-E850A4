@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     overspending_ratio_threshold: float = 1.1
     quality_metrics_interval_hours: int = 24
     enable_quality_scheduler: bool = True
+    jwt_secret: str = "change-this-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

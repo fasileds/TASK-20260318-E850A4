@@ -1,7 +1,9 @@
 from fastapi import Depends, Header, HTTPException, status
+import jwt
+from jwt import InvalidTokenError
 from sqlalchemy.orm import Session
 
-from app.core.crypto import decrypt_config_value
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.entities import User
 from app.models.enums import Role
@@ -15,14 +17,17 @@ def get_current_user(
     auth_header: str | None = Header(default=None, alias="Authorization"),
     db: Session = Depends(get_db),
 ) -> User:
-    username = None
+    username: str | None = None
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ")[1]
         try:
-            username = decrypt_config_value(token)
-        except Exception:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid auth token")
-        
+            payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+            username = payload.get("sub")
+            if not username:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid auth token subject")
+        except InvalidTokenError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired auth token")
+
     if not username:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
         

@@ -84,11 +84,14 @@ async def audit_log_middleware(request: Request, call_next):
     auth_header = request.headers.get("Authorization")
     username = None
     if auth_header and auth_header.startswith("Bearer "):
-        from app.core.crypto import decrypt_config_value
+        import jwt
         try:
             token = auth_header.split(" ")[1]
-            username = decrypt_config_value(token)
+            # Use jwt.decode to extract the "sub" (subject) claim which holds the username
+            payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+            username = payload.get("sub")
         except Exception:
+            # If decoding fails, continue with username=None to log the access anyway
             pass
 
     db = SessionLocal()

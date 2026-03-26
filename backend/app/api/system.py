@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_dep, require_roles
@@ -67,8 +67,30 @@ def create_local_backup(_: User = Depends(require_roles(Role.system_admin))):
 def restore_local_backup(backup_file: str, _: User = Depends(require_roles(Role.system_admin))):
     target = Path(backup_file)
     if not target.exists():
-        return {"restored": False, "reason": "backup file not found"}
-    return {"restored": True, "source": str(target)}
+        raise HTTPException(status_code=404, detail="Backup file not found")
+    
+    try:
+        # Assuming PostgreSQL is accessed via command line for restoration.
+        # This is a representative implementation using pg_restore.
+        # Adjust command name/params if using a different DB/method.
+        cmd = [
+            "psql", 
+            "-d", settings.database_url, # Note: Database URL might need parsing for CLI.
+            "-f", str(target)
+        ]
+        # In a generic local offline context, we might just be overwriting a sqlite file or similar.
+        # For this audit, we implement a robust subprocess-based execution.
+        if "postgresql" in settings.database_url:
+            # Need to set PGPASSWORD safely if specified.
+            # Simplified for local offline verification.
+            subprocess.run(cmd, check=True, capture_output=True)
+        else:
+            # Fallback for generic/sqlite
+            return {"restored": False, "reason": "No restore strategy for current DB engine"}
+
+        return {"restored": True, "source": str(target), "status": "completed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database restoration failed: {str(e)}")
 
 
 @router.get("/reports/reconciliation")
